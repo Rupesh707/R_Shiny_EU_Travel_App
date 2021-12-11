@@ -1,0 +1,264 @@
+---
+title: "Hotel_Final"
+author: "Rupesh Kumar"
+date: "4/12/2021"
+output: html_document
+---
+
+```{r}
+library(tidyverse)        
+library(plotly)
+library(dplyr)
+library(ggplot2)
+library(grid)
+library(gridExtra)
+library(scales)
+library(knitr)
+library(kableExtra)
+library(leaflet.extras)
+library(leaflet)
+library(sp)
+library(rworldmap)
+library(tidyverse)
+library(lubridate)
+library(stringr)
+library(forcats)
+library(tidytext)
+
+load("hotel.RData")
+
+hotel
+
+```
+```{r}
+d2 <- sum()
+```
+
+
+
+
+
+```{r}
+review_range = hotel %>%
+  select(Review_Range, Total_Number_of_Reviews,
+         Review_Total_Positive_Word_Counts, Review_Total_Negative_Word_Counts, Hotel_Name) %>%
+  group_by(Review_Range) %>%
+  summarise(Tot_Pos_Words = sum(Review_Total_Positive_Word_Counts),
+            Tot_Neg_Words = sum(Review_Total_Negative_Word_Counts),
+            Total_Words = sum(Tot_Pos_Words + Tot_Neg_Words),
+            Pos_Word_Rate = percent(Tot_Pos_Words/Total_Words),
+            Neg_Word_Rate = percent(Tot_Neg_Words/Total_Words),
+            Num_Reviews = n(),
+            Avg_Words_Per_Review = format(Total_Words/Num_Reviews,digits = 4)
+  )
+kable(as.data.frame(review_range))
+```
+
+
+
+
+
+- 1. Plotting number of review with the range buckets
+
+
+```{r}
+s1 <- ggplot(review_range, aes(x=Review_Range,
+                               y=Num_Reviews,
+                               fill=Review_Range))+
+  geom_bar(stat='identity', alpha=0.7)+
+  geom_text(label=review_range$Num_Reviews,nudge_y = 0.5)+
+  ggtitle(label="Number of Reviews by Range of Score")+
+  labs(xlab('Review Range'),ylab('Number of Reviews'))+
+  theme(legend.position = 'off')
+grid.draw(s1)
+
+```
+- 2. Plotting percentage of positive words with the range buckets
+
+
+```{r}
+s2 <- ggplot(review_range, aes(x=Review_Range,
+                               y=Pos_Word_Rate,
+                               fill=Review_Range))+
+  geom_bar(stat='identity', alpha=0.7)+
+  geom_text(label=review_range$Pos_Word_Rate,nudge_y = 0.2)+
+  ggtitle(label="Percent Positive Words by Range of Score")+
+  labs(xlab('Review Range'),ylab('Percent(%) Positive Words'))+
+  theme(legend.position = 'bottom')
+
+grid.draw(s2)
+```
+
+- 3. Plotting average words with the range buckets
+
+
+```{r}
+s3 <- ggplot(review_range, aes(x=Review_Range,
+                               y=Avg_Words_Per_Review,
+                               fill=Review_Range))+
+  geom_bar(stat='identity', alpha=0.7)+
+  geom_text(label=review_range$Avg_Words_Per_Review,nudge_y = 0.2)+
+  ggtitle(label="Average Words per Review by Range of Score")+
+  labs(xlab('Review Range'),ylab('Avg. Words per Review'))+
+  theme(legend.position = 'off')
+grid.draw(s3)
+```
+
+4. Data Table
+
+
+```{r}
+hotel.names = hotel %>%
+  select(Hotel_Name, Hotel_Address, Country, Average_Score, Total_Number_of_Reviews,
+         Review_Total_Positive_Word_Counts, Review_Total_Negative_Word_Counts) %>%
+  group_by(Hotel_Name, Hotel_Address, Country,Average_Score, Total_Number_of_Reviews) %>%
+  summarise(Tot_Pos_Words = sum(Review_Total_Positive_Word_Counts),
+            Tot_Neg_Words = sum(Review_Total_Negative_Word_Counts),
+            Total_Words = sum(Tot_Pos_Words + Tot_Neg_Words),
+            Pos_Word_Rate = percent(Tot_Pos_Words/Total_Words),
+            Neg_Word_Rate = percent(Tot_Neg_Words/Total_Words))
+
+tibble(head(as.data.frame(hotel.names)))
+```
+
+4. Country
+
+```{r}
+country.stats = hotel.names %>%
+  select(Country, Average_Score, Total_Number_of_Reviews, Tot_Pos_Words, Tot_Neg_Words,
+         Total_Words) %>%
+  group_by(Country) %>%
+  summarize(Avg_Hotel_Review = mean(Average_Score),
+            Positive_Words = sum(Tot_Pos_Words),
+            Negative_Words = sum(Tot_Neg_Words),
+            Total_Words = sum(Total_Words),
+            Pos_Word_Rate = percent(Positive_Words/Total_Words),
+            Neg_Word_Rate = percent(Negative_Words/Total_Words),
+            Number_Hotels = n(),
+            Total_Number_of_Reviews = sum(Total_Number_of_Reviews))
+
+ggplot(data = country.stats,aes(x=reorder(Country,-Number_Hotels), y=Number_Hotels, fill=Country))+
+  geom_bar(stat='identity', alpha=0.7) +
+  geom_text(label=format(country.stats$Avg_Hotel_Review, digits = 2)) +
+  labs(x='Country', y='Number of Hotels Reviewed') +
+  ggtitle(label='Number of Hotels Reviewed & Avg. Score by Country') +
+  scale_fill_brewer(palette='Pastel2')
+
+```
+
+
+4. Country
+
+```{r}
+# The single argument to this function, points, is a data.frame in which:
+#   - column 1 contains the longitude in degrees
+#   - column 2 contains the latitude in degrees
+coords2country = function(points)
+{  
+  #countriesSP <- getMap(resolution='low')
+  #countriesSP <- getMap(resolution='high')
+  countriesSP <- getMap(resolution='high') #you could use high res map from rworldxtra if you were concerned about detail
+  
+  # convert our list of points to a SpatialPoints object
+  
+  # pointsSP = SpatialPoints(points, proj4string=CRS(" +proj=longlat +ellps=WGS84 +datum=WGS84 +no_defs +towgs84=0,0,0"))
+  
+  #setting CRS directly to that from rworldmap
+  pointsSP = SpatialPoints(points, proj4string=CRS(proj4string(countriesSP)))  
+  
+  
+  # use 'over' to get indices of the Polygons object containing each point 
+  indices = over(pointsSP, countriesSP)
+  
+  # return the ADMIN names of each country
+  indices$ADMIN  
+  #indices$ISO3 # returns the ISO3 code 
+  #indices$continent   # returns the continent (6 continent model)
+  #indices$REGION   # returns the continent (7 continent model)
+}
+
+```
+
+```{r}
+m1<- hotel %>%
+  select(Hotel_Name, Hotel_Address,Country, lat, lng, Average_Score, Total_Number_of_Reviews,
+         Review_Total_Positive_Word_Counts, Review_Total_Negative_Word_Counts) %>%
+  filter(lat != 0 & lng != 0) %>%
+  group_by(Hotel_Name, Hotel_Address,Country, lat, lng,Average_Score, Total_Number_of_Reviews) %>%
+  summarise(Tot_Pos_Words = sum(Review_Total_Positive_Word_Counts),
+            Tot_Neg_Words = sum(Review_Total_Negative_Word_Counts),
+            Total_Words = sum(Tot_Pos_Words + Tot_Neg_Words),
+            Pos_Word_Rate = percent(Tot_Pos_Words/Total_Words),
+            Neg_Word_Rate = percent(Tot_Neg_Words/Total_Words))
+kable(as.data.frame(hotel.names))
+```
+
+
+
+
+
+```{r}
+points <- cbind(m1$lng,m1$lat)
+
+leaflet() %>% 
+  
+addProviderTiles('OpenStreetMap.Mapnik',
+                 options = providerTileOptions(noWrap = TRUE)) %>%
+  addMarkers(data = points,
+             popup = paste0("<strong>Hotel: </strong>",
+                            m1$Hotel_Name,                 
+                            "<br><strong>Address: </strong>", 
+                            m1$Hotel_Address, 
+                            "<br><strong>Average Score: </strong>", 
+                            m1$Average_Score, 
+                            "<br><strong>Number of Reviews: </strong>", 
+                            m1$Total_Number_of_Reviews,
+                            "<br><strong>Percent Positive Review Words: </strong>",
+                            m1$Pos_Word_Rate),
+             clusterOptions = markerClusterOptions())
+```
+
+
+```{r}
+df_nlp <- hotel %>%
+  select(Hotel_Name, Country,Negative_Review,Positive_Review, Review_Total_Positive_Word_Counts,Review_Total_Negative_Word_Counts, Reviewer_Score)
+df_nlp
+```
+
+```{r}
+colnames(df_nlp)
+
+df_nlp_words <- df_nlp %>%
+    select( Review_Total_Negative_Word_Counts, 
+           Review_Total_Positive_Word_Counts, Reviewer_Score) %>% 
+    filter(Review_Total_Negative_Word_Counts > 0 & 
+           Review_Total_Positive_Word_Counts > 0)
+
+ggplot(df_nlp_words, aes(Review_Total_Negative_Word_Counts, Review_Total_Positive_Word_Counts)) + 
+    geom_point( aes(color = Reviewer_Score))+ 
+    scale_colour_gradientn(colours=rainbow(2))
+
+
+```
+
+```{r}
+ save(df_nlp_words, file = "nlp_words.RData")
+```
+
+
+```{r}
+ggplot(df_nlp, aes(Review_Total_Negative_Word_Counts, Reviewer_Score)) + 
+    geom_point( ) + 
+    geom_smooth()
+```
+
+
+```{r}
+
+ggplot(df_nlp, aes(Review_Total_Positive_Word_Counts, Reviewer_Score)) + 
+    geom_point( ) + 
+    geom_smooth()
+```
+
+
+
