@@ -9,7 +9,7 @@ The aim of this project is to conduct an in-depth analysis of 515K European Hote
 ### **HOME PAPGE**
 
 <p align="center">
-  <img src="assets/Home Page.jpeg">
+  <img src="assets/Home Page.png">
 </p>
 
 ### **OVERVIEW PAGE**
