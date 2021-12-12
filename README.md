@@ -1,4 +1,5 @@
 ## @Author : Rupesh Kumar
+Licensed Under the [MIT License](LICENSE)
 
 # EU TRAVEL APPLICATION:
 ### **Travel recommendation application** [Click](https://rup-ash.shinyapps.io/EuTravel/)
