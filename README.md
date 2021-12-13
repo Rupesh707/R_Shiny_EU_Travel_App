@@ -6,6 +6,8 @@ Licensed Under the [MIT License](LICENSE.md)
 
 The aim of this project is to conduct an in-depth analysis of European Hotel Reviews data set, using state of the art tools to creat functions that are convered into classes. The analysis will be presented via an online application coded in R Shiny. 
 
+### LIVE DEMO [Click](https://vimeo.com/540032012?embedded=true&source=video_title&owner=138253550)
+
 ### FEATURES PREVIEW:
 ### **HOME PAPGE**
 
